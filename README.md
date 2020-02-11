@@ -9,3 +9,4 @@ g++ -std=c++11 -fopenmp -O3 ga.cpp -o ga
 * Actually save results 🤷
 * Input greedy initial solutions
 * Variable length encoding
+* Checkpointing
