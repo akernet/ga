@@ -295,8 +295,8 @@ int min_video_size = INT_MAX;
 long long total_video_size = 0;
 long long total_cache_size = 0;
 
-void parse_data() {
-    cin >> V >> E >> R >> C >> X;
+void parse_data(fstream &io) {
+    io >> V >> E >> R >> C >> X;
 
     total_cache_size = C*X;
 
@@ -309,7 +309,7 @@ void parse_data() {
     // videos
     for (int i = 0; i < V; i++) {
         Video v = Video();
-        cin >> v.size;
+        io >> v.size;
         videos.push_back(v);
 
         min_video_size = min(min_video_size, v.size);
@@ -320,11 +320,11 @@ void parse_data() {
     for (int i = 0; i < E; i++) {
         Endpoint e = Endpoint();
         int K;
-        cin >> e.latency;
-        cin >> K;
+        io >> e.latency;
+        io >> K;
         for (int j = 0; j < K; j++) {
             EndpointCacheConnection ecc = EndpointCacheConnection();
-            cin >> ecc.cache_id >> ecc.latency;
+            io >> ecc.cache_id >> ecc.latency;
             ecc.endpoint_id = i;
 
             e.connections.push_back(ecc);
@@ -336,7 +336,7 @@ void parse_data() {
     // requests
     for (int i = 0; i < R; i++) {
         Request r = Request();
-        cin >> r.video_id >> r.endpoint_id >> r.number_of_requests;
+        io >> r.video_id >> r.endpoint_id >> r.number_of_requests;
         requests.push_back(r);
 
         for (int j = 0; j < endpoints[r.endpoint_id].connections.size(); j++) {
@@ -350,8 +350,19 @@ void parse_data() {
     }
 }
 
-int main() {
-    parse_data();
+int main(int args, char* argv[]) {
+    if (args <= 1) {
+        cout << "No input file" << endl;
+        exit(1);
+    }
+
+    string input_file_path = argv[1];
+    fstream input_stream(input_file_path);
+    if (! input_stream.good()) {
+        cout << "Error parsing input file" << endl;
+        exit(1);
+    }
+    parse_data(input_stream);
     cout << "Done parsing" << endl;
     cout << "Min size " << min_video_size << endl;
 
