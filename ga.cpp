@@ -29,17 +29,17 @@ class EndpointCacheConnection {
 
 class Cache {
     public:
-        vector<EndpointCacheConnection> connections = vector<EndpointCacheConnection>();
+        vector<EndpointCacheConnection> connections;
 
         // video id -> list of endpoints
         // used to avoid looping over all connected cache servers
-        unordered_map<int, vector<pair<int, int>>> potential_videos = unordered_map<int, vector<pair<int, int>>>();
+        unordered_map<int, vector<pair<int, int>>> potential_videos;
 };
 
 class Endpoint {
     public:
         int latency;
-        vector<EndpointCacheConnection> connections = vector<EndpointCacheConnection>();
+        vector<EndpointCacheConnection> connections;
 };
 
 class Request {
@@ -53,15 +53,15 @@ class VideoCachePair {
         int c;
 };
 
-vector<Video> videos = vector<Video>();
-vector<Cache> caches = vector<Cache>();
-vector<Endpoint> endpoints = vector<Endpoint>();
-vector<Request> requests = vector<Request>();
+vector<Video> videos;
+vector<Cache> caches;
+vector<Endpoint> endpoints;
+vector<Request> requests;
 int V, E, R, C, X;
 
 class Chromosome {
     public:
-        vector<VideoCachePair> genes = vector<VideoCachePair>();
+        vector<VideoCachePair> genes;
         int score = -1;
 
         Chromosome(int number_of_genes) {
@@ -90,10 +90,10 @@ class Chromosome {
                 return score;
             }
 
-            vector<int> space_left = vector<int>(caches.size(), X);
+            vector<int> space_left(caches.size(), X);
 
             // endpoint, video
-            unordered_map<pair<int, int>, int, hash_pair> lowest_latency = unordered_map<pair<int, int>, int, hash_pair>();
+            unordered_map<pair<int, int>, int, hash_pair> lowest_latency;
 
             for (int i = 0; i < genes.size(); i++) {
                 VideoCachePair vc = genes[i];
@@ -163,7 +163,7 @@ class Chromosome {
 
         Chromosome cross_copy(Chromosome &c) {
 
-            vector<VideoCachePair> a1 = vector<VideoCachePair>();
+            vector<VideoCachePair> a1;
             a1.reserve(genes.size());
 
             int crossover_point = rand() % genes.size();
@@ -183,7 +183,7 @@ class Chromosome {
 
 class GA {
     public:
-        vector<Chromosome> chromosomes = vector<Chromosome>();
+        vector<Chromosome> chromosomes;
 
         int best_score = 0;
         int generation = 0;
@@ -254,7 +254,7 @@ class GA {
         }
 
         void cross_chromosomes() {
-            vector<Chromosome> new_chromosomes = vector<Chromosome>();
+            vector<Chromosome> new_chromosomes;
             new_chromosomes.reserve(chromosomes.size());
 
             for (int i = 0; i < chromosomes.size(); i++) {
