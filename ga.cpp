@@ -17,6 +17,13 @@ struct hash_pair {
     }
 };
 
+struct pair_comparator {
+	template<typename T>
+	bool operator()(const T& l, const T& r) const {
+		return l.first < r.first;
+	}
+};
+
 class Video {
     public:
         int size;
@@ -143,9 +150,7 @@ class Chromosome {
         }
 
         void mutate() {
-
             for (int i = 0; i < genes.size(); i++) {
-
                 if (rand() % genes.size() == 0) {
                     // randomly change cache or video
                     if (rand() % 2 == 0) {
@@ -158,26 +163,58 @@ class Chromosome {
                     score = -1;
                 }
             }
-
         }
 
-        Chromosome cross_copy(Chromosome &c) {
-
-            vector<VideoCachePair> a1;
-            a1.reserve(genes.size());
+        Chromosome onepoint_cross(Chromosome &c) {
+            vector<VideoCachePair> new_genes(genes.size());
 
             int crossover_point = rand() % genes.size();
 
             for (int i = 0; i < genes.size(); i++) {
                 if (i > crossover_point) {
-                    a1.push_back(genes[i]);
+                    new_genes[i] = genes[i];
                 } else {
-                    a1.push_back(c.genes[i]);
+                    new_genes[i] = c.genes[i];
                 }
             }
 
-            Chromosome n = Chromosome(a1);
+            Chromosome n = Chromosome(new_genes);
             return n;
+        }
+
+        Chromosome twopoint_cross(Chromosome &c) {
+            vector<VideoCachePair> new_genes(genes.size());
+
+            int tmp1 = rand() % genes.size();
+            int tmp2 = rand() % genes.size();
+
+            int crossover_point_1 = min(tmp1, tmp2);
+            int crossover_point_2 = max(tmp1, tmp2);
+
+            for (int i = 0; i < genes.size(); i++) {
+                if (i > crossover_point_1 && i < crossover_point_2) {
+                    new_genes[i] = genes[i];
+                } else {
+                    new_genes[i] = c.genes[i];
+                }
+            }
+
+            Chromosome n = Chromosome(new_genes);
+            return n;
+        }
+
+        Chromosome uniform_cross(Chromosome &c) {
+            vector<VideoCachePair> vcp(genes.size());
+
+            for (int i = 0; i < genes.size(); i++) {
+                if (rand() % 2 == 0) {
+                    vcp[i] = genes[i];
+                } else {
+                    vcp[i] = c.genes[i];
+                }
+            }
+
+            return Chromosome(vcp);
         }
 };
 
@@ -195,7 +232,6 @@ class GA {
             }
 
             while (true) {
-
                 evaluate_chromosomes();
                 if (generation % 10 == 0) {
                     cout << "Generation: ";
@@ -253,17 +289,57 @@ class GA {
             assert(false);
         }
 
+        int weighted_random_index() {
+            int count = chromosomes.size();
+
+            for (int i = 0; i < count; i++) {
+                if (rand() % 2 == 0) {
+                    return i;
+                }
+            }
+            return count-1;
+        }
+
+        vector<pair<int, int>> sorted_score_cache;
+        int sorted_score_cache_id = -1;
+        int rank_selection() {
+            if (sorted_score_cache_id != generation) {
+                sorted_score_cache = vector<pair<int, int>>(chromosomes.size());
+
+                for (int i = 0; i < chromosomes.size(); i++) {
+                    sorted_score_cache[i] = make_pair(-chromosomes[i].evaluate(), i);
+                }
+
+                sort(sorted_score_cache.begin(), sorted_score_cache.end(), pair_comparator());
+                sorted_score_cache_id = generation;
+            }
+
+            int index = weighted_random_index();
+            return sorted_score_cache[index].second;
+        }
+
         void cross_chromosomes() {
             vector<Chromosome> new_chromosomes;
             new_chromosomes.reserve(chromosomes.size());
 
             for (int i = 0; i < chromosomes.size(); i++) {
-                int i1 = weighted_random_index(chromosomes);
-                int i2 = weighted_random_index(chromosomes);
+                int i1 = rank_selection();
+                int i2 = rank_selection();
 
-                Chromosome new_chromosome = chromosomes[i1].cross_copy(chromosomes[i2]);
-
-                new_chromosomes.push_back(new_chromosome);
+                int type = rand() % 4;
+                // 1/4 uniform
+                // 1/4 twopoint
+                // 2/4 onepoint
+                if (type == 0) {
+                    Chromosome new_chromosome = chromosomes[i1].uniform_cross(chromosomes[i2]);
+                    new_chromosomes.push_back(new_chromosome);
+                } else if (type == 1) {
+                    Chromosome new_chromosome = chromosomes[i1].twopoint_cross(chromosomes[i2]);
+                    new_chromosomes.push_back(new_chromosome);
+                } else {
+                    Chromosome new_chromosome = chromosomes[i1].onepoint_cross(chromosomes[i2]);
+                    new_chromosomes.push_back(new_chromosome);
+                }
             }
 
             chromosomes = new_chromosomes;
