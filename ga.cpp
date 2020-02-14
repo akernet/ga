@@ -18,10 +18,10 @@ struct hash_pair {
 };
 
 struct pair_comparator {
-	template<typename T>
-	bool operator()(const T& l, const T& r) const {
-		return l.first < r.first;
-	}
+    template<typename T>
+    bool operator()(const T& l, const T& r) const {
+        return l.first < r.first;
+    }
 };
 
 class Video {
