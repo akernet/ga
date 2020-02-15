@@ -222,7 +222,6 @@ class GA {
     public:
         vector<Chromosome> chromosomes;
 
-        int best_score = 0;
         int generation = 0;
 
         GA(int number_of_chromosomes, int number_of_genes) {
@@ -231,13 +230,19 @@ class GA {
                 chromosomes.push_back(c);
             }
 
+            auto start_time = chrono::system_clock::now();
+
             while (true) {
                 evaluate_chromosomes();
-                if (generation % 10 == 0) {
+                if (generation % 10 == 0 && generation > 0) {
+                    auto current_time = chrono::system_clock::now();
+                    double duration = chrono::duration<double>(current_time-start_time).count();
                     cout << "Generation: ";
                     cout << setw(10) << setfill('0') << generation;
                     cout << " best score: ";
                     cout << setw(10) << setfill('0') << get_best_chromosome().evaluate();
+                    cout << " speed (generations/s) ";
+                    cout << ((double) generation/max(0.0, duration));
                     cout << endl;
                     //print_population_fitness();
                 }
@@ -259,15 +264,11 @@ class GA {
         void evaluate_chromosomes() {
             #pragma omp parallel for schedule(dynamic)
             for (int i = 0; i < chromosomes.size(); i++) {
-                int time_saved = chromosomes[i].evaluate();
-                if (time_saved > best_score) {
-                    best_score = time_saved;
-                }
+                chromosomes[i].evaluate();
             }
         }
 
         void mutate_chromosomes() {
-            #pragma omp parallel for schedule(dynamic)
             for (int i = 0; i < chromosomes.size(); i++) {
                 chromosomes[i].mutate();
             }
