@@ -1,28 +1,9 @@
 #include <iostream>
 #include <vector>
-#include <unordered_set>
-#include <unordered_map>
 #include <bits/stdc++.h>
 #include <stdlib.h>
 
-using namespace std;
-
-struct hash_pair {
-    template <class T1, class T2>
-    size_t operator()(const pair<T1, T2>& p) const
-    {
-        auto hash1 = hash<T1>{}(p.first);
-        auto hash2 = hash<T2>{}(p.second);
-        return hash1 ^ hash2;
-    }
-};
-
-struct pair_comparator {
-    template<typename T>
-    bool operator()(const T& l, const T& r) const {
-        return l.first < r.first;
-    }
-};
+#include "lib/ga.hpp"
 
 class Video {
     public:
@@ -40,7 +21,7 @@ class Cache {
 
         // video id -> list of endpoints
         // used to avoid looping over all connected cache servers
-        unordered_map<int, vector<pair<int, int>>> potential_videos;
+        umap<int, vector<pair<int, int>>> potential_videos;
 };
 
 class Endpoint {
@@ -66,306 +47,111 @@ vector<Endpoint> endpoints;
 vector<Request> requests;
 int V, E, R, C, X;
 
-class Chromosome {
-    public:
-        vector<VideoCachePair> genes;
-        int score = -1;
+template<>
+Chromosome<VideoCachePair>::Chromosome(int number_of_genes) {
+    for (int i = 0; i < number_of_genes; i++) {
+        VideoCachePair vcp = VideoCachePair();
 
-        Chromosome(int number_of_genes) {
-            for (int i = 0; i < number_of_genes; i++) {
-                VideoCachePair vcp = VideoCachePair();
+        // Generate random video-cache-pair
+        vcp.c = rand() % (int) caches.size();
+        vcp.v = rand() % (int) videos.size();
 
-                // Generate random video-cache-pair
-                vcp.c = rand() % (int) caches.size();
-                vcp.v = rand() % (int) videos.size();
+        genes.push_back(vcp);
+    }
+}
 
-                genes.push_back(vcp);
-            }
-        }
+template<>
+Chromosome<VideoCachePair>::Chromosome(vector<VideoCachePair> c, int number_of_genes) {
+    genes = c;
+    while (genes.size() < number_of_genes) {
+        VideoCachePair vcp = VideoCachePair();
 
-        Chromosome(vector<VideoCachePair> c) {
-            genes = c;
-        }
+        // Generate random video-cache-pair
+        vcp.c = rand() % (int) caches.size();
+        vcp.v = rand() % (int) videos.size();
 
-        Chromosome(const Chromosome &ref) {
-            genes = vector<VideoCachePair>(ref.genes);
-            score = ref.score;
-        }
+        genes.push_back(vcp);
+    }
+}
 
-        int evaluate() {
-            if (score != -1) {
-                return score;
-            }
+template<>
+int Chromosome<VideoCachePair>::evaluate() {
+    if (score != -1) {
+        return score;
+    }
 
-            vector<int> space_left(caches.size(), X);
+    vector<int> space_left(caches.size(), X);
 
-            // endpoint, video
-            unordered_map<pair<int, int>, int, hash_pair> lowest_latency;
+    // endpoint, video
+    umap<pair<int, int>, int, hash_pair> lowest_latency;
 
-            for (int i = 0; i < genes.size(); i++) {
-                VideoCachePair vc = genes[i];
-                // check space and add
-                if (space_left[vc.c] - videos[vc.v].size >= 0) {
-                    space_left[vc.c] -= videos[vc.v].size;
+    for (int i = 0; i < genes.size(); i++) {
+        VideoCachePair vc = genes[i];
+        // check space and add
 
-                    // check if video is requested for cache at all
-                    if (caches[vc.c].potential_videos.find(vc.v) == caches[vc.c].potential_videos.end()) {
-                        continue;
-                    }
+        if (space_left[vc.c] - videos[vc.v].size >= 0) {
+            space_left[vc.c] -= videos[vc.v].size;
 
-                    int len = caches[vc.c].potential_videos[vc.v].size();
-                    for (int j = 0; j < len; j++) {
-                        pair<int, int> p = caches[vc.c].potential_videos[vc.v][j];
-                        int endpoint_id = p.first;
-                        int latency = p.second;
-
-                        pair<int, int> ep = make_pair(endpoint_id, vc.v);
-
-                        if (lowest_latency.find(ep) == lowest_latency.end()) {
-                            lowest_latency[ep] = latency;
-                        } else {
-                            lowest_latency[ep] = min(lowest_latency[ep], latency);
-                        }
-                    }
-                }
+            // check if video is requested for cache at all
+            if (caches[vc.c].potential_videos.find(vc.v) == caches[vc.c].potential_videos.end()) {
+                continue;
             }
 
-            long long time_saved = 0;
-            long long number_of_users = 0;
-            for (int i = 0; i < requests.size(); i++) {
-                Request r = requests[i];
-                number_of_users += r.number_of_requests;
+            int len = caches[vc.c].potential_videos[vc.v].size();
+            for (int j = 0; j < len; j++) {
+                pair<int, int> p = caches[vc.c].potential_videos[vc.v][j];
+                int endpoint_id = p.first;
+                int latency = p.second;
 
-                pair<int, int> ev = make_pair(r.endpoint_id, r.video_id);
-                if (lowest_latency.find(ev) == lowest_latency.end()) {
-                    continue;
-                }
+                pair<int, int> ep = make_pair(endpoint_id, vc.v);
 
-                int Ld = endpoints[r.endpoint_id].latency;
-                time_saved += r.number_of_requests*max(0, (Ld - lowest_latency[ev]));
-            }
-
-            score = 1000*time_saved/number_of_users;
-            return score;
-        }
-
-        void mutate() {
-            for (int i = 0; i < genes.size(); i++) {
-                if (rand() % genes.size() == 0) {
-                    // randomly change cache or video
-                    if (rand() % 2 == 0) {
-                        genes[i].c = rand() % (int) caches.size();
-                    } else {
-                        genes[i].v = rand() % (int) videos.size();
-                    }
-
-                    // invalidate score
-                    score = -1;
-                }
-            }
-        }
-
-        Chromosome onepoint_cross(Chromosome &c) {
-            vector<VideoCachePair> new_genes(genes.size());
-
-            int crossover_point = rand() % genes.size();
-
-            for (int i = 0; i < genes.size(); i++) {
-                if (i > crossover_point) {
-                    new_genes[i] = genes[i];
+                if (lowest_latency.find(ep) == lowest_latency.end()) {
+                    lowest_latency[ep] = latency;
                 } else {
-                    new_genes[i] = c.genes[i];
+                    lowest_latency[ep] = min(lowest_latency[ep], latency);
                 }
             }
-
-            Chromosome n = Chromosome(new_genes);
-            return n;
         }
+    }
 
-        Chromosome twopoint_cross(Chromosome &c) {
-            vector<VideoCachePair> new_genes(genes.size());
+    long long time_saved = 0;
+    long long number_of_users = 0;
+    for (int i = 0; i < requests.size(); i++) {
+        Request &r = requests[i];
+        number_of_users += r.number_of_requests;
 
-            int tmp1 = rand() % genes.size();
-            int tmp2 = rand() % genes.size();
-
-            int crossover_point_1 = min(tmp1, tmp2);
-            int crossover_point_2 = max(tmp1, tmp2);
-
-            for (int i = 0; i < genes.size(); i++) {
-                if (i > crossover_point_1 && i < crossover_point_2) {
-                    new_genes[i] = genes[i];
-                } else {
-                    new_genes[i] = c.genes[i];
-                }
-            }
-
-            Chromosome n = Chromosome(new_genes);
-            return n;
+        pair<int, int> ev = make_pair(r.endpoint_id, r.video_id);
+        if (lowest_latency.find(ev) == lowest_latency.end()) {
+            continue;
         }
+        
+        int Ld = endpoints[r.endpoint_id].latency;
+        time_saved += r.number_of_requests*max(0, (Ld - lowest_latency[ev]));
+    }
 
-        Chromosome uniform_cross(Chromosome &c) {
-            vector<VideoCachePair> vcp(genes.size());
+    score = 1000*time_saved/number_of_users;
+    return score;
+}
 
-            for (int i = 0; i < genes.size(); i++) {
-                if (rand() % 2 == 0) {
-                    vcp[i] = genes[i];
-                } else {
-                    vcp[i] = c.genes[i];
-                }
+template<>
+void Chromosome<VideoCachePair>::mutate() {
+    int n = genes.size();
+    int cs = caches.size();
+    int vs = videos.size();
+    for (int i = 0; i < n; i++) {
+        if (rn() % n == 0) {
+            // randomly change cache or video
+            if (rn() % 2 == 0) {
+                genes[i].c = rn() % cs;
+            } else {
+                genes[i].v = rn() % vs;
             }
 
-            return Chromosome(vcp);
+            // invalidate score
+            score = -1;
         }
-};
-
-class GA {
-    public:
-        vector<Chromosome> chromosomes;
-
-        int generation = 0;
-
-        GA(int number_of_chromosomes, int number_of_genes) {
-            for (int i = 0; i < number_of_chromosomes; i++) {
-                Chromosome c = Chromosome(number_of_genes);
-                chromosomes.push_back(c);
-            }
-
-            auto start_time = chrono::system_clock::now();
-
-            while (true) {
-                evaluate_chromosomes();
-                if (generation % 10 == 0 && generation > 0) {
-                    auto current_time = chrono::system_clock::now();
-                    double duration = chrono::duration<double>(current_time-start_time).count();
-                    cout << "Generation: ";
-                    cout << setw(10) << setfill('0') << generation;
-                    cout << " best score: ";
-                    cout << setw(10) << setfill('0') << get_best_chromosome().evaluate();
-                    cout << " speed (generations/s) ";
-                    cout << ((double) generation/max(0.0, duration));
-                    cout << endl;
-                    //print_population_fitness();
-                }
-
-                // elitism
-                Chromosome best = get_best_chromosome();
-
-                cross_chromosomes();
-                mutate_chromosomes();
-
-                // elitism
-                chromosomes[0] = Chromosome(best);
-
-                generation += 1;
-            }
-
-        }
-
-        void evaluate_chromosomes() {
-            #pragma omp parallel for schedule(dynamic)
-            for (int i = 0; i < chromosomes.size(); i++) {
-                chromosomes[i].evaluate();
-            }
-        }
-
-        void mutate_chromosomes() {
-            for (int i = 0; i < chromosomes.size(); i++) {
-                chromosomes[i].mutate();
-            }
-        }
-
-        // could be made much faster
-        int weighted_random_index(vector<Chromosome> &c) {
-            int sum_of_weight = 0;
-            for(int i=0; i < c.size(); i++) {
-                sum_of_weight += c[i].evaluate();
-            }
-            int rnd = rand() % sum_of_weight;
-            for(int i = 0; i < c.size(); i++) {
-                if(rnd < c[i].evaluate()) {
-                    return i;
-                }
-                rnd -= c[i].evaluate();
-            }
-            assert(false);
-        }
-
-        int weighted_random_index() {
-            int count = chromosomes.size();
-
-            for (int i = 0; i < count; i++) {
-                if (rand() % 2 == 0) {
-                    return i;
-                }
-            }
-            return count-1;
-        }
-
-        vector<pair<int, int>> sorted_score_cache;
-        int sorted_score_cache_id = -1;
-        int rank_selection() {
-            if (sorted_score_cache_id != generation) {
-                sorted_score_cache = vector<pair<int, int>>(chromosomes.size());
-
-                for (int i = 0; i < chromosomes.size(); i++) {
-                    sorted_score_cache[i] = make_pair(-chromosomes[i].evaluate(), i);
-                }
-
-                sort(sorted_score_cache.begin(), sorted_score_cache.end(), pair_comparator());
-                sorted_score_cache_id = generation;
-            }
-
-            int index = weighted_random_index();
-            return sorted_score_cache[index].second;
-        }
-
-        void cross_chromosomes() {
-            vector<Chromosome> new_chromosomes;
-            new_chromosomes.reserve(chromosomes.size());
-
-            for (int i = 0; i < chromosomes.size(); i++) {
-                int i1 = rank_selection();
-                int i2 = rank_selection();
-
-                int type = rand() % 4;
-                // 1/4 uniform
-                // 1/4 twopoint
-                // 2/4 onepoint
-                if (type == 0) {
-                    Chromosome new_chromosome = chromosomes[i1].uniform_cross(chromosomes[i2]);
-                    new_chromosomes.push_back(new_chromosome);
-                } else if (type == 1) {
-                    Chromosome new_chromosome = chromosomes[i1].twopoint_cross(chromosomes[i2]);
-                    new_chromosomes.push_back(new_chromosome);
-                } else {
-                    Chromosome new_chromosome = chromosomes[i1].onepoint_cross(chromosomes[i2]);
-                    new_chromosomes.push_back(new_chromosome);
-                }
-            }
-
-            chromosomes = new_chromosomes;
-        }
-
-        void print_population_fitness() {
-            for (int i = 0; i < chromosomes.size(); i++) {
-                cout << chromosomes[i].evaluate() << " ";
-            }
-            cout << endl;
-        }
-
-        Chromosome get_best_chromosome() {
-            int best_fitness = 0;
-            int best_index = 0;
-            for (int i = 0; i < chromosomes.size(); i++) {
-                if (chromosomes[i].evaluate() > best_fitness) {
-                    best_fitness = chromosomes[i].evaluate();
-                    best_index = i;
-                }
-            }
-            Chromosome best_chromosome = chromosomes[best_index];
-            return best_chromosome;
-        }
-};
+    }
+}
 
 int min_video_size = INT_MAX;
 
@@ -427,6 +213,35 @@ void parse_data(fstream &io) {
     }
 }
 
+vector<VideoCachePair> parse_reference(fstream &io) {
+    int n;
+    io >> n;
+
+    vector<VideoCachePair> vcp;
+
+    for (int i = 0; i < n; i++) {
+        string line;
+        getline(io, line);
+
+        if (line.size() == 0) continue;
+
+        istringstream line_stream(line);
+
+        int cache_id;
+        line_stream >> cache_id;
+
+        int video_id;
+        while (line_stream >> video_id) {
+            VideoCachePair p;
+            p.c = cache_id;
+            p.v = video_id;
+            vcp.push_back(p);
+        }
+    }
+
+    return vcp;
+}
+
 int main(int args, char* argv[]) {
     if (args <= 1) {
         cout << "No input file" << endl;
@@ -441,17 +256,36 @@ int main(int args, char* argv[]) {
     }
     parse_data(input_stream);
     cout << "Done parsing" << endl;
-    cout << "Min size " << min_video_size << endl;
+
+    int longest_reference_solution = 0;
+    vector<vector<VideoCachePair>> reference_solutions;
+    for (int i = 2; i < args; i++) {
+        string reference_file_path = argv[i];
+        fstream input_stream(reference_file_path);
+        if (! input_stream.good()) {
+            cout << "Error parsing input file" << endl;
+            exit(1);
+        }
+        vector<VideoCachePair> ref = parse_reference(input_stream);
+        //reference_solutions.push_back(ref);
+        longest_reference_solution = max(longest_reference_solution, (int) ref.size());
+        cout << "Done parsing" << endl;
+    }
 
     // number of genes considering filling all servers with the smallest possible video
     // should probably be much lower
     int number_of_genes = C*X/(min_video_size);
     cout << "upper bound for # genes " << number_of_genes << endl;
 
+    if (longest_reference_solution != 0) {
+        number_of_genes = longest_reference_solution*1.5;
+        cout << "Using " << number_of_genes << " genes based on the longest reference solution" << endl;
+    }
+
     cout << "total cache " << total_cache_size << endl;
     cout << "total video " << total_video_size << endl;
 
-    int number_of_chromosomes = 100;
-    GA ga = GA(number_of_chromosomes, number_of_genes);
+    int number_of_chromosomes = 40;
+    GA<VideoCachePair> ga = GA<VideoCachePair>(reference_solutions, number_of_chromosomes, number_of_genes);
     return 0;
 }
