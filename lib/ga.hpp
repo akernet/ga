@@ -142,7 +142,7 @@ class GA {
                     cout << " # c " << chromosomes.size() << " # g " << chromosomes[0].genes.size();
                     cout << endl;
 
-                    cout << "avg eval (s) " << max(0.0, a) << " avg cross/mut " << max(0.0, b-a) << endl;
+                    cout << "avg eval (s) " << max(0.0f, a) << " avg cross/mut " << max(0.0f, b-a) << endl;
                 }
 
                 // elitism
