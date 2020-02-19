@@ -219,6 +219,9 @@ vector<VideoCachePair> parse_reference(fstream &io) {
 
     vector<VideoCachePair> vcp;
 
+    string dummy;
+    getline(io, dummy);
+
     for (int i = 0; i < n; i++) {
         string line;
         getline(io, line);
@@ -267,7 +270,7 @@ int main(int args, char* argv[]) {
             exit(1);
         }
         vector<VideoCachePair> ref = parse_reference(input_stream);
-        //reference_solutions.push_back(ref);
+        reference_solutions.push_back(ref);
         longest_reference_solution = max(longest_reference_solution, (int) ref.size());
         cout << "Done parsing" << endl;
     }
@@ -275,7 +278,7 @@ int main(int args, char* argv[]) {
     // number of genes considering filling all servers with the smallest possible video
     // should probably be much lower
     int number_of_genes = C*X/(min_video_size);
-    cout << "upper bound for # genes " << number_of_genes << endl;
+    cout << "Upper bound for # genes " << number_of_genes << endl;
 
     if (longest_reference_solution != 0) {
         number_of_genes = longest_reference_solution*1.5;

@@ -93,6 +93,8 @@ class GA {
 
         int generation = 0;
 
+        int best_reference_score = 0;
+
         GA(vector<vector<T>> references, int number_of_chromosomes, int number_of_genes) {
             chromosomes_a = vector<Chromosome<T> >(number_of_chromosomes);
             chromosomes_b = vector<Chromosome<T> >(number_of_chromosomes);
@@ -100,9 +102,9 @@ class GA {
             vector<Chromosome<T> >& chromosomes = chromosomes_a;
 
             for (int i = 0; i < references.size(); i++) {
-                //chromosomes.push_back(Chromosome(references[i], number_of_genes));
-                chromosomes_a[i] = Chromosome<T>(number_of_genes);
+                chromosomes_a[i] = Chromosome<T>(references[i], number_of_genes);
                 cout << "Reference solution " << i << " has score " << chromosomes[i].evaluate() << endl;
+                best_reference_score = max(best_reference_score, chromosomes[i].evaluate());
             }
 
             for (int i = references.size(); i < number_of_chromosomes; i++) {
@@ -131,12 +133,17 @@ class GA {
                     current_time = chrono::system_clock::now();
                     duration = chrono::duration<double>(current_time-start_time).count();
 
+                    int best_score = get_best_chromosome().evaluate();
+
                     cout << "Time (s): ";
                     cout << setw(6) << setfill('0') << (int) duration;
                     cout << " generation: ";
                     cout << setw(10) << setfill('0') << generation;
                     cout << " best score: ";
-                    cout << setw(10) << setfill('0') << get_best_chromosome().evaluate();
+                    cout << setw(10) << setfill('0') << best_score;
+                    if (best_reference_score != 0) {
+                        cout << " improvement (%) " << ((double) 100*(best_score-best_reference_score))/((double) best_reference_score);
+                    }
                     cout << " speed (generations/s) ";
                     cout << fixed << setprecision(4) << setw(8) << setfill('0') << ((double) generation/max(0.0, duration));
                     cout << " # c " << chromosomes.size() << " # g " << chromosomes[0].genes.size();
@@ -253,6 +260,8 @@ class GA {
                 } else {
                     chromosomes[i1].onepoint_cross(chromosomes[i2], new_chromosomes[i]);
                 }
+
+                new_chromosomes[i].score = -1;
             }
 
             vector_a = !vector_a;
