@@ -85,10 +85,8 @@ int Chromosome<VideoCachePair>::evaluate() {
     // endpoint, video
     umap<pair<int, int>, int, hash_pair> lowest_latency;
 
-    for (int i = 0; i < genes.size(); i++) {
-        VideoCachePair vc = genes[i];
+    for (VideoCachePair & vc : genes) {
         // check space and add
-
         if (space_left[vc.c] - videos[vc.v].size >= 0) {
             space_left[vc.c] -= videos[vc.v].size;
 
@@ -116,8 +114,7 @@ int Chromosome<VideoCachePair>::evaluate() {
 
     long long time_saved = 0;
     long long number_of_users = 0;
-    for (int i = 0; i < requests.size(); i++) {
-        Request &r = requests[i];
+    for (Request & r : requests) {
         number_of_users += r.number_of_requests;
 
         pair<int, int> ev = make_pair(r.endpoint_id, r.video_id);

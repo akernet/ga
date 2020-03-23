@@ -1,5 +1,9 @@
+#include <cassert>
 #include <vector>
 #include <stdlib.h>
+#include <iomanip>
+#include <bits/stdc++.h>
+#include <iostream>
 
 #include "robin_hood.h"
 
@@ -38,7 +42,7 @@ class Chromosome {
         vector<T> genes;
         int score = -1;
 
-        Chromosome() {}
+        Chromosome() = default;
         Chromosome(int number_of_genes);
         Chromosome(vector<T> c, int number_of_genes);
         int evaluate();
