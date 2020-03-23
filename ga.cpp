@@ -124,7 +124,6 @@ int Chromosome<VideoCachePair>::evaluate() {
         if (lowest_latency.find(ev) == lowest_latency.end()) {
             continue;
         }
-        
         int Ld = endpoints[r.endpoint_id].latency;
         time_saved += r.number_of_requests*max(0, (Ld - lowest_latency[ev]));
     }

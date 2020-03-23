@@ -9,10 +9,10 @@ using namespace std;
 #define umap robin_hood::unordered_flat_map
 
 static unsigned int g_seed = rand();
-inline int fastrand() { 
-  g_seed = (214013*g_seed+2531011); 
-  return (g_seed>>16)&0x7FFF; 
-} 
+inline int fastrand() {
+  g_seed = (214013*g_seed+2531011);
+  return (g_seed>>16)&0x7FFF;
+}
 
 
 struct hash_pair {
@@ -117,7 +117,7 @@ class GA {
 
             auto current_time = start_time;
             double duration = 0;
-            
+
             float a = 0;
             float b = 0;
 
@@ -246,7 +246,7 @@ class GA {
 
                 // int i1 = weighted_random_index(chromosomes);
                 // int i2 = weighted_random_index(chromosomes);
-                
+
                 int type = rn() % 4;
                 // 1/4 uniform
                 // 1/4 twopoint
